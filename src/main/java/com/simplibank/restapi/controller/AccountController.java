@@ -37,6 +37,12 @@ public class AccountController {
         return toResponse(accountService.withdraw(accountNumber, request.amount()));
     }
 
+    @PostMapping("/transfer")
+    public BalanceResponse transfer(@RequestBody TransferRequest request) {
+        return toResponse(accountService.transfer(
+                request.fromAccount(), request.toAccount(), request.amount()));
+    }
+
     private BalanceResponse toResponse(Account a) {
         return new BalanceResponse(a.getAccountNumber(), a.getAccountHolder(), a.getBalance());
     }
@@ -44,4 +50,6 @@ public class AccountController {
     public record AmountRequest(BigDecimal amount) { }
 
     public record BalanceResponse(String accountNumber, String accountHolder, BigDecimal balance) { }
+
+    public record TransferRequest(String fromAccount, String toAccount, BigDecimal amount) { }
 }
