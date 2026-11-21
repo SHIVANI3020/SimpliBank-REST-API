@@ -3,6 +3,8 @@ package com.simplibank.restapi.controller;
 import com.simplibank.restapi.entity.Account;
 import com.simplibank.restapi.service.AccountService;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +25,14 @@ public class AccountController {
     @GetMapping("/{accountNumber}/balance")
     public BalanceResponse getBalance(@PathVariable String accountNumber) {
         return toResponse(accountService.getAccount(accountNumber));
+    }
+
+    @GetMapping("/{accountNumber}/transactions")
+    public List<TransactionResponse> getHistory(@PathVariable String accountNumber) {
+        return accountService.getHistory(accountNumber).stream()
+                .map(t -> new TransactionResponse(t.getId(), t.getType(), t.getAmount(),
+                        t.getBalanceAfter(), t.getTxnTime(), t.getCategory()))
+                .toList();
     }
 
     @PostMapping("/{accountNumber}/deposit")
@@ -52,4 +62,8 @@ public class AccountController {
     public record BalanceResponse(String accountNumber, String accountHolder, BigDecimal balance) { }
 
     public record TransferRequest(String fromAccount, String toAccount, BigDecimal amount) { }
+
+    public record TransactionResponse(Integer id, String type, BigDecimal amount,
+                                      BigDecimal balanceAfter, LocalDateTime txnTime,
+                                      String category) { }
 }

@@ -1,4 +1,5 @@
 package com.simplibank.restapi.service;
+import java.util.List;
 
 import com.simplibank.restapi.entity.Account;
 import com.simplibank.restapi.entity.Transaction;
@@ -25,6 +26,10 @@ public class AccountService {
     public Account getAccount(String accountNumber) {
         return accountRepository.findById(accountNumber)
                 .orElseThrow(() -> new AccountNotFoundException(accountNumber));
+    }
+        public List<Transaction> getHistory(String accountNumber) {
+        getAccount(accountNumber);   // throws 404 if the account doesn't exist
+        return transactionRepository.findByAccountNumberOrderByIdDesc(accountNumber);
     }
 
     @Transactional
