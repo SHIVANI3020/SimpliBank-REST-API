@@ -23,7 +23,14 @@ public class Account {
     @Column(name = "pin_hash")
     private String pinHash;
 
-    protected Account() { }   // JPA needs an empty constructor
+    protected Account() { }
+
+    public Account(String accountNumber, String accountHolder, BigDecimal balance, String pinHash) {
+        this.accountNumber = accountNumber;
+        this.accountHolder = accountHolder;
+        this.balance = balance;
+        this.pinHash = pinHash;
+    }
 
     public String getAccountNumber() { return accountNumber; }
     public String getAccountHolder() { return accountHolder; }

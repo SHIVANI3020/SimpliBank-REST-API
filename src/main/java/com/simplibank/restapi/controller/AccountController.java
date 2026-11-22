@@ -5,11 +5,13 @@ import com.simplibank.restapi.service.AccountService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -20,6 +22,13 @@ public class AccountController {
 
     public AccountController(AccountService accountService) {
         this.accountService = accountService;
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public BalanceResponse createAccount(@RequestBody CreateAccountRequest request) {
+        return toResponse(accountService.createAccount(
+                request.accountHolder(), request.pin(), request.initialDeposit()));
     }
 
     @GetMapping("/{accountNumber}/balance")
@@ -56,6 +65,8 @@ public class AccountController {
     private BalanceResponse toResponse(Account a) {
         return new BalanceResponse(a.getAccountNumber(), a.getAccountHolder(), a.getBalance());
     }
+
+    public record CreateAccountRequest(String accountHolder, String pin, BigDecimal initialDeposit) { }
 
     public record AmountRequest(BigDecimal amount) { }
 

@@ -1,5 +1,4 @@
 package com.simplibank.restapi.service;
-import java.util.List;
 
 import com.simplibank.restapi.entity.Account;
 import com.simplibank.restapi.entity.Transaction;
@@ -7,7 +6,10 @@ import com.simplibank.restapi.exception.AccountNotFoundException;
 import com.simplibank.restapi.exception.InsufficientFundsException;
 import com.simplibank.restapi.repository.AccountRepository;
 import com.simplibank.restapi.repository.TransactionRepository;
+import com.simplibank.restapi.util.PinHasher;
 import java.math.BigDecimal;
+import java.security.SecureRandom;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,7 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final SecureRandom random = new SecureRandom();
 
     public AccountService(AccountRepository accountRepository,
                           TransactionRepository transactionRepository) {
@@ -27,9 +30,31 @@ public class AccountService {
         return accountRepository.findById(accountNumber)
                 .orElseThrow(() -> new AccountNotFoundException(accountNumber));
     }
-        public List<Transaction> getHistory(String accountNumber) {
+
+    public List<Transaction> getHistory(String accountNumber) {
         getAccount(accountNumber);   // throws 404 if the account doesn't exist
         return transactionRepository.findByAccountNumberOrderByIdDesc(accountNumber);
+    }
+
+    @Transactional
+    public Account createAccount(String accountHolder, String pin, BigDecimal initialDeposit) {
+        if (accountHolder == null || accountHolder.isBlank()) {
+            throw new IllegalArgumentException("Account holder name is required.");
+        }
+        if (pin == null || !pin.matches("\\d{4}")) {
+            throw new IllegalArgumentException("PIN must be exactly 4 digits.");
+        }
+        if (initialDeposit == null || initialDeposit.signum() < 0) {
+            throw new IllegalArgumentException("Initial deposit cannot be negative.");
+        }
+        String number = generateAccountNumber();
+        Account account = new Account(number, accountHolder.trim(), initialDeposit, PinHasher.hash(pin));
+        accountRepository.save(account);
+        if (initialDeposit.signum() > 0) {
+            transactionRepository.save(new Transaction(
+                    number, "DEPOSIT", initialDeposit, initialDeposit, "Initial"));
+        }
+        return account;
     }
 
     @Transactional
@@ -57,7 +82,8 @@ public class AccountService {
                 accountNumber, "WITHDRAW", amount, account.getBalance(), "Other"));
         return account;
     }
-        @Transactional
+
+    @Transactional
     public Account transfer(String fromNumber, String toNumber, BigDecimal amount) {
         validateAmount(amount);
         if (fromNumber.equals(toNumber)) {
@@ -78,6 +104,14 @@ public class AccountService {
         transactionRepository.save(new Transaction(
                 toNumber, "TRANSFER_IN", amount, to.getBalance(), "Transfer"));
         return from;
+    }
+
+    private String generateAccountNumber() {
+        String number;
+        do {
+            number = "SB" + (100000 + random.nextInt(900000));
+        } while (accountRepository.existsById(number));
+        return number;
     }
 
     private void validateAmount(BigDecimal amount) {
