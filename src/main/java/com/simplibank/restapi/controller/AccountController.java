@@ -52,14 +52,14 @@ public class AccountController {
 
     @PostMapping("/{accountNumber}/withdraw")
     public BalanceResponse withdraw(@PathVariable String accountNumber,
-                                    @RequestBody AmountRequest request) {
-        return toResponse(accountService.withdraw(accountNumber, request.amount()));
+                                    @RequestBody WithdrawRequest request) {
+        return toResponse(accountService.withdraw(accountNumber, request.amount(), request.pin()));
     }
 
     @PostMapping("/transfer")
     public BalanceResponse transfer(@RequestBody TransferRequest request) {
         return toResponse(accountService.transfer(
-                request.fromAccount(), request.toAccount(), request.amount()));
+                request.fromAccount(), request.toAccount(), request.amount(), request.pin()));
     }
 
     private BalanceResponse toResponse(Account a) {
@@ -70,9 +70,11 @@ public class AccountController {
 
     public record AmountRequest(BigDecimal amount) { }
 
+    public record WithdrawRequest(BigDecimal amount, String pin) { }
+
     public record BalanceResponse(String accountNumber, String accountHolder, BigDecimal balance) { }
 
-    public record TransferRequest(String fromAccount, String toAccount, BigDecimal amount) { }
+    public record TransferRequest(String fromAccount, String toAccount, BigDecimal amount, String pin) { }
 
     public record TransactionResponse(Integer id, String type, BigDecimal amount,
                                       BigDecimal balanceAfter, LocalDateTime txnTime,

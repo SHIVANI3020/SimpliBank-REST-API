@@ -4,10 +4,13 @@ import com.simplibank.restapi.entity.Account;
 import com.simplibank.restapi.entity.Transaction;
 import com.simplibank.restapi.exception.AccountNotFoundException;
 import com.simplibank.restapi.exception.InsufficientFundsException;
+import com.simplibank.restapi.exception.InvalidPinException;
 import com.simplibank.restapi.repository.AccountRepository;
 import com.simplibank.restapi.repository.TransactionRepository;
 import com.simplibank.restapi.util.PinHasher;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -69,9 +72,10 @@ public class AccountService {
     }
 
     @Transactional
-    public Account withdraw(String accountNumber, BigDecimal amount) {
+    public Account withdraw(String accountNumber, BigDecimal amount, String pin) {
         validateAmount(amount);
         Account account = getAccount(accountNumber);
+        verifyPin(account, pin);
         if (account.getBalance().compareTo(amount) < 0) {
             throw new InsufficientFundsException(
                     "Insufficient funds. Available balance: Rs." + account.getBalance());
@@ -84,13 +88,14 @@ public class AccountService {
     }
 
     @Transactional
-    public Account transfer(String fromNumber, String toNumber, BigDecimal amount) {
+    public Account transfer(String fromNumber, String toNumber, BigDecimal amount, String pin) {
         validateAmount(amount);
         if (fromNumber.equals(toNumber)) {
             throw new IllegalArgumentException("Cannot transfer to the same account.");
         }
         Account from = getAccount(fromNumber);
         Account to = getAccount(toNumber);
+        verifyPin(from, pin);
         if (from.getBalance().compareTo(amount) < 0) {
             throw new InsufficientFundsException(
                     "Insufficient funds. Available balance: Rs." + from.getBalance());
@@ -104,6 +109,17 @@ public class AccountService {
         transactionRepository.save(new Transaction(
                 toNumber, "TRANSFER_IN", amount, to.getBalance(), "Transfer"));
         return from;
+    }
+
+    private void verifyPin(Account account, String pin) {
+        if (pin == null || account.getPinHash() == null) {
+            throw new InvalidPinException();
+        }
+        byte[] stored = account.getPinHash().getBytes(StandardCharsets.UTF_8);
+        byte[] given = PinHasher.hash(pin).getBytes(StandardCharsets.UTF_8);
+        if (!MessageDigest.isEqual(stored, given)) {   // constant-time comparison
+            throw new InvalidPinException();
+        }
     }
 
     private String generateAccountNumber() {
